@@ -8,6 +8,7 @@
     "lint"
   ],
   "scripts": {
+    "test": "echo 'no test yet'",
     "lint": "eslint ."
   },
   "keywords": [],
