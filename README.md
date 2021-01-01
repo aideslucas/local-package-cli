@@ -15,22 +15,29 @@ install this package as global package:
 ## initializing the package:
 before you can use the copy functions you will need to initialize the package, to do so run in command line 
 
-`pkg-cli init <mainDir> --compileScript=<compileScript> --customScript=<customScript>`
+`pkg-cli init <dir>`
 
 ### init arguments:
 
 * `mainDir` - the directory where you keep all your repositories, (i.e: ~/dev | C:\dev). the copy function will only search the package in repositories under this directory.
 
-* `compileScript` - the script to run before copy when running `pkg-cli compile-copy`. this defaults to `npm run compile`.
+* `compileScript` - [OPTIONAL] the script to run before copy when running `pkg-cli copy --compile`. this defaults to `npm run compile`.
 
-* `buildScript` - the script to run before copy when running `pkg-cli build-copy`. this defaults to `npm run build`.
+* `buildScript` - [OPTIONAL] the script to run before copy when running `pkg-cli copy --build`. this defaults to `npm run build`.
 
-* `customScript` - the script to run before copy when running `pkg-cli custom-copy`. this doesn't have a default script, if you dont set it you wont be able to run `pkg-cli custom-copy`.
+* `customScript` - [OPTIONAL] the script to run before copy when running `pkg-cli copy --custom`. this doesn't have a default script, if you dont set it you wont be able to run `pkg-cli copy --custom`.
 
-example: `pkg-cli init ~/dev --buildScript='yarn build' --customScript='npm run lint && npm run compile:dev'`
+example: `pkg-cli init ~/dev --buildScript 'yarn build' --customScript 'npm run lint && npm run compile:dev'`
 
-## Functions
-* `pkg-cli copy` - copies the package in the current dir to node_modules of all the repos that require the current package in their package.json (under <mainDir>)
-* `pkg-cli compile-copy` - runs the <compileScript> set durring init phase then runs the copy command
-* `pkg-cli build-copy` - runs the <buildScript> set durring init phase then runs the copy command
-* `pkg-cli custom-copy` - runs the <customScript> set durring init phase then runs the copy command
+## Copy Function
+To copy the package to all the repos that require it in package.json, run the command `pkg-cli copy`.
+### copy arguments:
+* `--compile [script]` - runs the [script] if [script] is not passed, then <compileScript> set durring init phase then runs the copy command
+* `--build [script]` - runs the [script] if [script] is not passed, then <buildScript> set durring init phase then runs the copy command
+* `--custom [script]` - runs the [script] if [script] is not passed, then <customScript> set durring init phase then runs the copy command
+
+examples:
+
+`pkg-cli copy --compile`
+
+`pkg-cli copy --build --custom 'npm run lint'`
