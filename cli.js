@@ -16,21 +16,31 @@ const coerceFolder = path => {
     throw new Error(`directory ${path} not found`);
 };
 
-const initBuilder = command =>
+const initBuilder = command => {
     command.positional('mainDir', {
         describe: 'Main Dir',
         coerce: coerceFolder,
     });
+    
+    command.positional('compileScript', { describe: 'Compile script to run before copy', defaults: 'npm run compile' });
+    command.positional('buildScript', { describe: 'Build script to run before copy', defaults: 'npm run build' });
+    command.positional('customScript', { describe: 'Custom script to run before copy' });
+}
 
-const initHandler = ({ mainDir }) => init(mainDir);
+const initHandler = ({ mainDir, compileScript, buildScript, customScript }) => init({ mainDir, compileScript, buildScript, customScript });
 
-yargs.command('init <mainDir>', false, initBuilder, initHandler).parse();
+yargs.command(
+    'init <mainDir> --compileScript <compileScript> --buildScript <buildScript> --customScript <customScript>',
+    'set initial params for the package to work',
+    initBuilder,
+    initHandler
+).parse();
 
 const copyBuilder = command => {
     const homedir = os.homedir();
-    const configPath = `${homedir}/.package-cli-config.json`;
+    const configPath = `${homedir}/.local-package-cli-config.json`;
     if (!fs.pathExistsSync(configPath) || !fs.readJsonSync(configPath).inited) {
-        throw new Error('package-cli hasnt been configed yet, please run init');
+        throw new Error('local-package-cli hasnt been initiated yet, please run init');
     }
 
     return command;
@@ -38,4 +48,4 @@ const copyBuilder = command => {
 
 const copyHandler = () => copyPackage();
 
-yargs.command('copy', false, copyBuilder, copyHandler).parse();
+yargs.command('copy', 'copies the content of the package to the repos using it under <mainDir>', copyBuilder, copyHandler).parse();

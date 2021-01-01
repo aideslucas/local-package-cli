@@ -1,44 +1,32 @@
 {
-  "name": "@playbuzz/package-cli",
-  "version": "1.2.0",
+  "name": "local-package-cli",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "repository": "git://github.com/playbuzz/node-modules.git",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
-  },
+  "repository": "git://github.com/aideslucas/local-package-cli.git",
   "pre-push": [
-    "test",
-    "cover",
     "lint"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\"",
-    "precover": "trash coverage",
-    "cover": "echo \"no tests yet....\"",
     "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "eslintConfig": {
-    "extends": "@playbuzz/eslint-config"
-  },
+  "license": "MIT",
   "dependencies": {
+    "babel-eslint": "^8.2.2",
     "fs-extra": "^8.1.0",
     "os": "^0.1.1",
     "path": "^0.12.7",
-    "yargs": "^15.1.0",
-    "babel-eslint": "^8.2.2"
+    "yargs": "^15.1.0"
   },
   "devDependencies": {
-    "@playbuzz/eslint-config": "^0.5.1",
     "eslint": "^6.8.0",
     "pre-push": "^0.1.1",
     "trash": "^6.1.1",
     "trash-cli": "^3.0.0"
   },
   "bin": {
-    "package-cli": "cli.js"
+    "pkg-cli": "cli.js"
   }
 }
