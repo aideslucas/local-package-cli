@@ -4,32 +4,68 @@
 
 const path = require('path');
 const fs = require('fs-extra');
-const os = require('os');
-const homedir = os.homedir();
-
 const { promisify } = require('util');
+const shell = require('shelljs');
+const out = require('cli-output');
+
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
 
-function copyPackage() {
+function copyPackage(config, { compile, build, custom }) {
+    const { dir, customScript, compileScript, buildScript } = config;
+    if (custom) {
+        if (typeof custom === 'boolean' && !customScript) {
+            out.error('there is no customScript in config. either set customScript or send the script in the command');
+            return;
+        } else if (typeof custom === 'string') {
+            shell.exec(custom);
+        } else {
+            shell.exec(customScript);
+        }
+    }
+
+    if (compile) {
+        if (typeof compile === 'boolean' && !compileScript) {
+            out.error('there is no compileScript in config. either set compileScript or send the script in the command');
+            return;
+        } else if (typeof compile === 'string') {
+            shell.exec(compile);
+        } else {
+            shell.exec(compileScript);
+        }
+    }
+
+    if (build) {
+        if (typeof build === 'boolean' && !buildScript) {
+            out.error('there is no buildScript in config. either set buildScript or send the script in the command');
+            return;
+        } else if (typeof build === 'string') {
+            shell.exec(build);
+        } else {
+            shell.exec(buildScript);
+        }
+    }
+
+    const pack = shell.exec('npm pack', { silent: true });
+
+    if (pack.code !== 0) {
+        out.error('pack failed');
+        return;
+    }
+
+    const lines = pack.output.split('\n');
+    const tarName = lines[lines.length - 2];
+
     const rootDir = process.cwd();
-    const configPath = path.join(homedir, '.package-cli-config.json');
+    const tarPath = path.join(rootDir, tarName);
     const packageJsonPath = path.join(rootDir, 'package.json');
-
     const pjson = require(packageJsonPath);
-    const config = fs.readJsonSync(configPath);
+    const pname = pjson.name;
 
-    const { mainDir } = config;
-    console.log(`copying package from dir: ${rootDir} to repos inside dir: ${mainDir}`);
+    console.log(`copying package from dir: ${rootDir} to repos inside dir: ${dir}`);
 
     return new Promise((resolve, reject) => {
-        const source = path.join(rootDir, 'dist');
-        const pname = pjson.name;
-        searchPackageRecursive(mainDir)
-            .then(resolve)
-            .catch(err => {
-                reject(err);
-            });
+        searchPackageRecursive(dir).then(resolve).catch(err => reject(err));
 
         async function searchPackageRecursive(directory) {
             const nodeVersion = process.version;
@@ -44,7 +80,7 @@ function copyPackage() {
                         || Object.keys(folderPackageJson.peerDependencies || {}).includes(pname)
                         || Object.keys(folderPackageJson.dependencies || {}).includes(pname)
                     )) {
-                        copyDist(path.join(folder, 'node_modules', pname, 'dist'), folderPackageJson.name);
+                        copyContent(folder, folderPackageJson.name);
                     } else if (!folderPackageJson) {
                         console.error(`package.json for folder ${folder} is invalid, skipping it`);
                     }
@@ -73,15 +109,19 @@ function copyPackage() {
                 .map(dirent => path.join(directory, dirent.name));
         }
 
-        function copyDist(folderPath, pkgName) {
+        function copyContent(destPath, pkgName) {
             try {
-                fs.copySync(source, folderPath);
-                console.log(`dist folder was copied to ${pkgName}`);
+                shell.cd(destPath);
+                shell.exec('npm install ' + tarPath, { silent: true });
+                out.log(`package content folder was copied to ${pkgName}`);
             } catch (err) {
-                console.error(`failed to copy dist folder to ${pkgName}`);
+                out.error(`failed to copy package content folder to ${pkgName}`);
                 reject(err);
             }
         }
+    }).finally(() => {
+        shell.cd(rootDir);
+        shell.exec('rm ' + tarPath);
     });
 }
 
