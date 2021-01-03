@@ -19,7 +19,7 @@ before you can use the copy functions you will need to initialize the package, t
 
 ### init arguments:
 
-* `mainDir` - the directory where you keep all your repositories, (i.e: ~/dev | C:\dev). the copy function will only search the package in repositories under this directory.
+* `dir` - the directory where you keep all your repositories, (i.e: ~/dev | C:\dev). the copy function will only search the package in repositories under this directory.
 
 * `compileScript` - [OPTIONAL] the script to run before copy when running `pkg-cli copy --compile`. this defaults to `npm run compile`.
 
@@ -41,3 +41,20 @@ examples:
 `pkg-cli copy --compile`
 
 `pkg-cli copy --build --custom 'npm run lint'`
+
+## package config:
+after running init you can update its config running `pkg-cli setConfig`
+
+to view the current config you can run `pkg-cli getConfig`
+
+### setConfig arguments:
+
+* `dir` - [OPTIONAL] the directory where you keep all your repositories, (i.e: ~/dev | C:\dev). the copy function will only search the package in repositories under this directory.
+
+* `compileScript` - [OPTIONAL] the script to run before copy when running `pkg-cli copy --compile`. this defaults to `npm run compile`.
+
+* `buildScript` - [OPTIONAL] the script to run before copy when running `pkg-cli copy --build`. this defaults to `npm run build`.
+
+* `customScript` - [OPTIONAL] the script to run before copy when running `pkg-cli copy --custom`. this doesn't have a default script, if you dont set it you wont be able to run `pkg-cli copy --custom`.
+
+example: `pkg-cli setConfig --dir ~/dev --buildScript 'yarn build'`
