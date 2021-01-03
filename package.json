@@ -1,6 +1,6 @@
 {
   "name": "local-package-cli",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "The perfect package to work with packages locally",
   "main": "index.js",
   "repository": "git://github.com/aideslucas/local-package-cli.git",
@@ -17,7 +17,6 @@
   "dependencies": {
     "cli-output": "^1.0.0",
     "fs-extra": "^8.1.0",
-    "local-package-cli": "file:local-package-cli-1.1.1.tgz",
     "os": "^0.1.1",
     "path": "^0.12.7",
     "shelljs": "^0.3.0",
