@@ -55,14 +55,21 @@ function copyPackage(config, { compile, build, custom }) {
 
     const lines = pack.output.split('\n');
     const tarName = lines[lines.length - 2];
+    const unpack = shell.exec(`tar -xzf ${tarName}`, { silent: true });
+
+    if (unpack.code !== 0) {
+        out.error('unpack failed, removing tgz');
+        shell.rm(tarName);
+        return;
+    }
 
     const rootDir = process.cwd();
-    const tarPath = path.join(rootDir, tarName);
+    const packagePath = path.join(rootDir, 'package');
     const packageJsonPath = path.join(rootDir, 'package.json');
     const pjson = require(packageJsonPath);
     const pname = pjson.name;
 
-    console.log(`copying package from dir: ${rootDir} to repos inside dir: ${dir}`);
+    console.log(`copying package ${pname} to repos under: ${dir}`);
 
     return new Promise((resolve, reject) => {
         searchPackageRecursive(dir).then(resolve).catch(err => reject(err));
@@ -80,7 +87,7 @@ function copyPackage(config, { compile, build, custom }) {
                         || Object.keys(folderPackageJson.peerDependencies || {}).includes(pname)
                         || Object.keys(folderPackageJson.dependencies || {}).includes(pname)
                     )) {
-                        copyContent(folder, folderPackageJson.name);
+                        copyPackageContent(path.join(folder, 'node_modules', pname), folderPackageJson.name);
                     } else if (!folderPackageJson) {
                         console.error(`package.json for folder ${folder} is invalid, skipping it`);
                     }
@@ -109,10 +116,9 @@ function copyPackage(config, { compile, build, custom }) {
                 .map(dirent => path.join(directory, dirent.name));
         }
 
-        function copyContent(destPath, pkgName) {
+        function copyPackageContent(destPath, pkgName) {
             try {
-                shell.cd(destPath);
-                shell.exec('npm install ' + tarPath, { silent: true });
+                fs.copySync(packagePath, destPath);
                 out.log(`package content folder was copied to ${pkgName}`);
             } catch (err) {
                 out.error(`failed to copy package content folder to ${pkgName}`);
@@ -120,8 +126,8 @@ function copyPackage(config, { compile, build, custom }) {
             }
         }
     }).finally(() => {
-        shell.cd(rootDir);
-        shell.exec('rm ' + tarPath);
+        shell.rm(tarName);
+        shell.rm('-rf', 'package');
     });
 }
 
