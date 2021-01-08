@@ -72,7 +72,7 @@ function copyPackage(config, { compile, build, custom }) {
     console.log(`copying package ${pname} to repos under: ${dir}`);
 
     return new Promise((resolve, reject) => {
-        searchPackageRecursive(dir).then(resolve).catch(err => reject(err));
+        fs.ensureDir(packagePath).then(() => searchPackageRecursive(dir)).then(resolve).catch(err => reject(err));
 
         async function searchPackageRecursive(directory) {
             const nodeVersion = process.version;
@@ -87,7 +87,7 @@ function copyPackage(config, { compile, build, custom }) {
                         || Object.keys(folderPackageJson.peerDependencies || {}).includes(pname)
                         || Object.keys(folderPackageJson.dependencies || {}).includes(pname)
                     )) {
-                        copyPackageContent(path.join(folder, 'node_modules', pname), folderPackageJson.name);
+                        await copyPackageContent(path.join(folder, 'node_modules', pname), folderPackageJson.name);
                     } else if (!folderPackageJson) {
                         console.error(`package.json for folder ${folder} is invalid, skipping it`);
                     }
@@ -116,9 +116,9 @@ function copyPackage(config, { compile, build, custom }) {
                 .map(dirent => path.join(directory, dirent.name));
         }
 
-        function copyPackageContent(destPath, pkgName) {
+        async function copyPackageContent(destPath, pkgName) {
             try {
-                fs.copySync(packagePath, destPath);
+                await fs.copy(packagePath, destPath);
                 out.log(`package content folder was copied to ${pkgName}`);
             } catch (err) {
                 out.error(`failed to copy package content folder to ${pkgName}`);
@@ -126,8 +126,11 @@ function copyPackage(config, { compile, build, custom }) {
             }
         }
     }).finally(() => {
-        shell.rm(tarName);
-        shell.rm('-rf', 'package');
+        try {
+            shell.rm('-rf', [tarName, 'package']);
+        } catch(e) {
+            out.error('could not remove tgz or package folder', e);
+        }
     });
 }
 

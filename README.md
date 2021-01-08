@@ -35,10 +35,15 @@ To copy the package to all the repos that require it in package.json, run the co
 * `--compile [script]` - runs the [script] if [script] is not passed, then <compileScript> set durring init phase then runs the copy command
 * `--build [script]` - runs the [script] if [script] is not passed, then <buildScript> set durring init phase then runs the copy command
 * `--custom [script]` - runs the [script] if [script] is not passed, then <customScript> set durring init phase then runs the copy command
+* `--watch [folder]` - watches files under `folder` (if not passed it will watch `./`), on change the package will copy again (including compile/build/custom scripts).
 
 examples:
 
 `pkg-cli copy --compile`
+
+`pkg-cli copy --watch`
+
+`pkg-cli copy --compile --watch src`
 
 `pkg-cli copy --build --custom 'npm run lint'`
 

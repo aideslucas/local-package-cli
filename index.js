@@ -1,7 +1,7 @@
 const copyPackage = require('./copy-package');
-const init = require('./init');
+const config = require('./config');
 
 module.exports = {
     copyPackage,
-    init,
+    config,
 };

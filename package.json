@@ -1,6 +1,6 @@
 {
   "name": "local-package-cli",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "The perfect package to work with packages locally",
   "main": "index.js",
   "repository": "git://github.com/aideslucas/local-package-cli.git",
@@ -17,6 +17,7 @@
   "dependencies": {
     "cli-output": "^1.0.0",
     "fs-extra": "^8.1.0",
+    "nodemon": "^2.0.7",
     "os": "^0.1.1",
     "path": "^0.12.7",
     "shelljs": "^0.3.0",
