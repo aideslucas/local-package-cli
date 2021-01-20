@@ -44,8 +44,7 @@ const copyHandler = ({ compile, build, custom, watch }) => {
         if (watch) {
             const watchParam = typeof watch === 'string' ? watch : '.';
             nodemon(`--watch ${watchParam} --ignore *.tgz --ignore package --delay 2`);
-            nodemon.on('restart', (files) => {
-                console.log('nodemon restart files: ', files);
+            nodemon.on('restart', () => {
                 copyPackage(config, { compile, build, custom }); 
             });
         }
