@@ -47,6 +47,21 @@ examples:
 
 `pkg-cli copy --build --custom 'npm run lint'`
 
+## Install Function
+To install a local package to the current repo (even if not on package.json), run the command `pkg-cli install <packageName>`.
+### install arguments:
+* `<packageName>` - the name of the package to install. the package must be under the `dir` in the config file
+* `--compile [script]` - runs the [script] if [script] is not passed, then <compileScript> set durring init phase on the package then it installs it
+* `--build [script]` - runs the [script] if [script] is not passed, then <buildScript> set durring init phase on the package then it installs it
+* `--custom [script]` - runs the [script] if [script] is not passed, then <customScript> set durring init phase on the package then it installs it
+
+examples:
+
+`pkg-cli install local-package-cli --compile`
+
+`pkg-cli install local-package-cli --build --custom 'npm run lint'`
+
+
 ## package config:
 after running init you can update its config running `pkg-cli setConfig`
 

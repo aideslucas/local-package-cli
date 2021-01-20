@@ -8,7 +8,7 @@ const fs = require('fs-extra');
 const out = require('cli-output');
 const nodemon = require('nodemon');
 const { initConfig, setConfig, printConfig, getConfig } = require('./config');
-const copyPackage = require('./copy-package');
+const { copyPackage, installPackage } = require('./copy-package');
 
 const coerceFolder = path => {
     const exists = fs.pathExistsSync(path);
@@ -55,6 +55,29 @@ const copyHandler = ({ compile, build, custom, watch }) => {
     }
 }
 
+
+const installBuilder = command => {
+    command.positional(
+        'packageName', 
+        { 
+            describe: 'the name of the package you would want to install (as described in package.json)' 
+        }
+    );
+    command.positional('compile', { describe: 'run compile script on package before installing' });
+    command.positional('build', { describe: 'run build script on package before installing' });
+    command.positional('custom', { describe: 'run custom script on package before installing' });
+};
+
+const installHandler = ({ packageName, compile, build, custom }) => {
+    const config = getConfig();
+    if (config && config.inited) {
+        installPackage(config, { packageName, compile, build, custom });
+    } else {
+        out.error('local-package-cli hasnt been initiated yet, please run init');
+        return false;
+    }
+}
+
 yargs(hideBin(process.argv))
     .command(
         'init <dir> [compileScript] [buildScript] [customScript]',
@@ -79,5 +102,11 @@ yargs(hideBin(process.argv))
         'copy the package to all repos under the configured dir.',
         copyBuilder,
         copyHandler
+    )
+    .command(
+        'install <packageName> [compile] [build] [custom]',
+        'installs a single package found locally under the configured dir.',
+        installBuilder,
+        installHandler
     )
     .argv;

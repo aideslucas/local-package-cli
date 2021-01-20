@@ -11,8 +11,7 @@ const out = require('cli-output');
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
 
-function copyPackage(config, { compile, build, custom }) {
-    const { dir, customScript, compileScript, buildScript } = config;
+function executeScirpts({ customScript, compileScript, buildScript }, { compile, build, custom }) {
     if (custom) {
         if (typeof custom === 'boolean' && !customScript) {
             out.error('there is no customScript in config. either set customScript or send the script in the command');
@@ -45,7 +44,77 @@ function copyPackage(config, { compile, build, custom }) {
             shell.exec(buildScript);
         }
     }
+}
 
+async function searchPackageUsageRecursive(pname, directory, copyPackageContent) {
+    const nodeVersion = process.version;
+    const folders = await (nodeVersion.startsWith('v8') ? getSubFoldersV8 : getSubFolders)(directory);
+    await Promise.all(folders.map(async folder => {
+        const pJsonPath = path.join(folder, 'package.json');
+        const exists = fs.pathExistsSync(pJsonPath);
+        if (exists) {
+            const folderPackageJson = fs.readJsonSync(pJsonPath, { throws: false });
+            if (folderPackageJson && (
+                Object.keys(folderPackageJson.devDependencies || {}).includes(pname)
+                || Object.keys(folderPackageJson.peerDependencies || {}).includes(pname)
+                || Object.keys(folderPackageJson.dependencies || {}).includes(pname)
+            )) {
+                await copyPackageContent(path.join(folder, 'node_modules', pname), folderPackageJson.name);
+            } else if (!folderPackageJson) {
+                console.error(`package.json for folder ${folder} is invalid, skipping it`);
+            }
+        }
+
+        await searchPackageUsageRecursive(pname, folder, copyPackageContent);
+    }));
+}
+
+async function getSubFoldersV8(dir) {
+    const subdirs = await readdir(dir);
+    const files = await Promise.all(subdirs.map(async subdir => {
+        const res = path.resolve(dir, subdir);
+        if ((await stat(res)).isDirectory() && !subdir.startsWith('.') && subdir !== 'node_modules') {
+            return res;
+        }
+        return null;
+    }));
+    return files.reduce((a, f) => a.concat(f), []);
+}
+
+async function getSubFolders(directory) {
+    const dirs = await fs.readdir(directory, { withFileTypes: true });
+    return dirs.filter(dirent =>
+        dirent.isDirectory() && !dirent.name.startsWith('.') && dirent.name !== 'node_modules')
+        .map(dirent => path.join(directory, dirent.name));
+}
+
+async function searchPackageDefinitionRecursive(pname, directory) {
+    let folderName = '';
+    const nodeVersion = process.version;
+    const folders = await (nodeVersion.startsWith('v8') ? getSubFoldersV8 : getSubFolders)(directory);
+    await Promise.all(folders.map(async folder => {
+        const pJsonPath = path.join(folder, 'package.json');
+        const exists = fs.pathExistsSync(pJsonPath);
+        if (exists) {
+            const folderPackageJson = fs.readJsonSync(pJsonPath, { throws: false });
+            if (folderPackageJson && folderPackageJson.name === pname) {
+                folderName = folder;
+                return folder;
+            } else if (!folderPackageJson) {
+                console.error(`package.json for folder ${folder} is invalid, skipping it`);
+            }
+        }
+
+        return await searchPackageDefinitionRecursive(pname, folder);
+    }));
+
+    return folderName;
+}
+
+function copyPackage(config, { compile, build, custom }) {
+    executeScirpts(config, { compile, build, custom });
+
+    const { dir } = config;
     const pack = shell.exec('npm pack', { silent: true });
 
     if (pack.code !== 0) {
@@ -72,50 +141,6 @@ function copyPackage(config, { compile, build, custom }) {
     console.log(`copying package ${pname} to repos under: ${dir}`);
 
     return new Promise((resolve, reject) => {
-        fs.ensureDir(packagePath).then(() => searchPackageRecursive(dir)).then(resolve).catch(err => reject(err));
-
-        async function searchPackageRecursive(directory) {
-            const nodeVersion = process.version;
-            const folders = await (nodeVersion.startsWith('v8') ? getSubFoldersV8 : getSubFolders)(directory);
-            await Promise.all(folders.map(async folder => {
-                const pJsonPath = path.join(folder, 'package.json');
-                const exists = fs.pathExistsSync(pJsonPath);
-                if (exists) {
-                    const folderPackageJson = fs.readJsonSync(pJsonPath, { throws: false });
-                    if (folderPackageJson && (
-                        Object.keys(folderPackageJson.devDependencies || {}).includes(pname)
-                        || Object.keys(folderPackageJson.peerDependencies || {}).includes(pname)
-                        || Object.keys(folderPackageJson.dependencies || {}).includes(pname)
-                    )) {
-                        await copyPackageContent(path.join(folder, 'node_modules', pname), folderPackageJson.name);
-                    } else if (!folderPackageJson) {
-                        console.error(`package.json for folder ${folder} is invalid, skipping it`);
-                    }
-                }
-
-                await searchPackageRecursive(folder);
-            }));
-        }
-
-        async function getSubFoldersV8(dir) {
-            const subdirs = await readdir(dir);
-            const files = await Promise.all(subdirs.map(async subdir => {
-                const res = path.resolve(dir, subdir);
-                if ((await stat(res)).isDirectory() && !subdir.startsWith('.') && subdir !== 'node_modules') {
-                    return res;
-                }
-                return null;
-            }));
-            return files.reduce((a, f) => a.concat(f), []);
-        }
-
-        async function getSubFolders(directory) {
-            const dirs = await fs.readdir(directory, { withFileTypes: true });
-            return dirs.filter(dirent =>
-                dirent.isDirectory() && !dirent.name.startsWith('.') && dirent.name !== 'node_modules')
-                .map(dirent => path.join(directory, dirent.name));
-        }
-
         async function copyPackageContent(destPath, pkgName) {
             try {
                 await fs.copy(packagePath, destPath);
@@ -125,6 +150,11 @@ function copyPackage(config, { compile, build, custom }) {
                 reject(err);
             }
         }
+        
+        return fs.ensureDir(packagePath)
+            .then(() => searchPackageUsageRecursive(pname, dir, copyPackageContent))
+            .then(resolve)
+            .catch(err => reject(err));
     }).finally(() => {
         try {
             shell.rm('-rf', [tarName, 'package']);
@@ -134,4 +164,43 @@ function copyPackage(config, { compile, build, custom }) {
     });
 }
 
-module.exports = copyPackage;
+async function installPackage(config, { packageName, compile, build, custom }) {
+    const { dir } = config;
+    
+    const packageFolder = await searchPackageDefinitionRecursive(packageName, dir);
+
+    if (!packageFolder) {
+        console.error(`package not found under ${dir}. cannot install`);
+        return;
+    }
+
+    const rootDir = process.cwd();
+
+    shell.cd(packageFolder);
+    executeScirpts(config, { compile, build, custom });
+
+    const pack = shell.exec('npm pack', { silent: true });
+
+    if (pack.code !== 0) {
+        out.error('pack failed');
+        return;
+    }
+
+    const lines = pack.output.split('\n');
+    const tarName = lines[lines.length - 2];
+
+    shell.cd(rootDir);
+
+    shell.exec(`npm install --save ${packageFolder}${path.sep}${tarName}`);
+
+    let pjsontxt = fs.readFileSync('./package.json', 'utf-8');
+    const version = tarName.replace(`${packageName}-`, '').replace('.tgz', '');
+    const fileRE = new RegExp(`file.+${tarName}`);
+    pjsontxt = pjsontxt.replace(fileRE, `^${version}`);
+    fs.writeFileSync('./package.json', pjsontxt);
+
+    shell.cd(packageFolder);
+    shell.rm(tarName);
+}
+
+module.exports = { copyPackage, installPackage };
