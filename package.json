@@ -1,6 +1,6 @@
 {
   "name": "local-package-cli",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "The perfect package to work with packages locally",
   "main": "lib/index.js",
   "repository": "git://github.com/aideslucas/local-package-cli.git",
@@ -25,6 +25,7 @@
     "nodemon": "^2.0.7",
     "os": "^0.1.1",
     "path": "^0.12.7",
+    "rimraf": "^3.0.2",
     "shelljs": "^0.3.0",
     "yargs": "^16.2.0"
   },
