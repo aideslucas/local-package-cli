@@ -1,7 +1,0 @@
-.eslintrc.json
-.gitignore
-node_modules
-.history
-.idea
-.git
-package-lock.json
