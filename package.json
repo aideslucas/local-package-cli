@@ -1,6 +1,6 @@
 {
   "name": "local-package-cli",
-  "version": "2.0.12",
+  "version": "2.0.13",
   "description": "The perfect package to work with packages locally",
   "main": "lib/index.js",
   "repository": "git://github.com/aideslucas/local-package-cli.git",
