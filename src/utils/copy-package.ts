@@ -1,69 +1,67 @@
-/* eslint-disable no-sync */
-"use strict";
-const path = require("path");
-const fs = require("fs-extra");
-const { promisify } = require("util");
-const shell = require("shelljs");
-const out = require("cli-output");
+import path from "path";
+import fs from "fs-extra";
+import { promisify } from "util";
+import shell from "shelljs";
+import { CommonArgs, Config, Install } from "../types";
 
-const readdir = promisify(fs.readdir);
-const stat = promisify(fs.stat);
+const readdir = promisify<fs.PathLike, string[]>(fs.readdir);
+const stat = promisify<fs.PathLike, fs.Stats>(fs.stat);
 
 function executeScripts(
-  { customScript, compileScript, buildScript },
-  { compile, build, custom }
+  { customScript, compileScript, buildScript }: Config,
+  { compile, build, custom }: CommonArgs
 ) {
   if (custom) {
     if (typeof custom === "boolean" && !customScript) {
-      out.error(
+      console.error(
         "there is no customScript in config. either set customScript or send the script in the command"
       );
       return;
     } else if (typeof custom === "string") {
       shell.exec(custom);
     } else {
-      shell.exec(customScript);
+      shell.exec(customScript!);
     }
   }
 
   if (compile) {
     if (typeof compile === "boolean" && !compileScript) {
-      out.error(
+      console.error(
         "there is no compileScript in config. either set compileScript or send the script in the command"
       );
       return;
     } else if (typeof compile === "string") {
       shell.exec(compile);
     } else {
-      shell.exec(compileScript);
+      shell.exec(compileScript!);
     }
   }
 
   if (build) {
     if (typeof build === "boolean" && !buildScript) {
-      out.error(
+      console.error(
         "there is no buildScript in config. either set buildScript or send the script in the command"
       );
       return;
     } else if (typeof build === "string") {
       shell.exec(build);
     } else {
-      shell.exec(buildScript);
+      shell.exec(buildScript!);
     }
   }
 }
 
 async function searchPackageUsageRecursive(
-  pname,
-  directory,
-  copyPackageContent
+  pname: string,
+  directory: string,
+  copyPackageContent: Function
 ) {
   const nodeVersion = process.version;
   const folders = await (nodeVersion.startsWith("v8")
     ? getSubFoldersV8
     : getSubFolders)(directory);
   await Promise.all(
-    folders.map(async (folder) => {
+    folders.map(async (folder: string) => {
       const pJsonPath = path.join(folder, "package.json");
       const nodeModulesPath = path.join(folder, "node_modules", pname);
 
@@ -95,7 +93,7 @@ async function searchPackageUsageRecursive(
   );
 }
 
-async function getSubFoldersV8(dir) {
+async function getSubFoldersV8(dir: string) {
   const subdirs = await readdir(dir);
   const files = await Promise.all(
     subdirs.map(async (subdir) => {
@@ -110,10 +108,10 @@ async function getSubFoldersV8(dir) {
       return null;
     })
   );
-  return files.reduce((a, f) => a.concat(f), []);
+  return files.reduce<string[]>((a, f) => a.concat(f ?? ""), []);
 }
 
-async function getSubFolders(directory) {
+async function getSubFolders(directory: string) {
   const dirs = await fs.readdir(directory, { withFileTypes: true });
   return dirs
     .filter(
@@ -125,12 +123,15 @@ async function getSubFolders(directory) {
     .map((dirent) => path.join(directory, dirent.name));
 }
 
-async function searchPackageDefinitionRecursive(pname, directory) {
+async function searchPackageDefinitionRecursive(
+  pname: string,
+  directory: string
+) {
   const nodeVersion = process.version;
   const folders = await (nodeVersion.startsWith("v8")
     ? getSubFoldersV8
     : getSubFolders)(directory);
-  const res = await Promise.all(
+  const res: any[] = await Promise.all(
     folders.map(async (folder) => {
       const pJsonPath = path.join(folder, "package.json");
       const exists = fs.pathExistsSync(pJsonPath);
@@ -149,26 +150,29 @@ async function searchPackageDefinitionRecursive(pname, directory) {
     })
   );
 
-  return res.find((x) => !!x);
+  return res.find((x: any) => !!x);
 }
 
-function copyPackage(config, { compile, build, custom }) {
+export function copyPackage(
+  config: Config,
+  { compile, build, custom }: CommonArgs
+) {
   executeScripts(config, { compile, build, custom });
 
   const { dir } = config;
   const pack = shell.exec("npm pack", { silent: true });
 
   if (pack.code !== 0) {
-    out.error("pack failed");
+    console.error("pack failed");
     return;
   }
 
-  const lines = pack.output.split("\n");
+  const lines = pack.stdout.split("\n");
   const tarName = lines[lines.length - 2];
   const unpack = shell.exec(`tar -xzf ${tarName}`, { silent: true });
 
   if (unpack.code !== 0) {
-    out.error("unpack failed, removing tgz");
+    console.error("unpack failed, removing tgz");
     shell.rm(tarName);
     return;
   }
@@ -182,18 +186,21 @@ function copyPackage(config, { compile, build, custom }) {
   console.log(`copying package ${pname} to repos under: ${dir}`);
 
   return new Promise((resolve, reject) => {
-    async function copyPackageContent(destPath, pkgName) {
+    async function copyPackageContent(destPath: string, pkgName: string) {
       try {
-        out.debug(`copying package to package ${pkgName}`);
+        console.debug(`copying package to package ${pkgName}`);
         try {
           fs.removeSync(destPath);
         } catch (err) {
-          out.log(`failed to delete old package content in ${pkgName}`, err);
+          console.log(
+            `failed to delete old package content in ${pkgName}`,
+            err
+          );
         }
         fs.copySync(packagePath, destPath);
-        out.log(`package content folder was copied to ${pkgName}`);
+        console.log(`package content folder was copied to ${pkgName}`);
       } catch (err) {
-        out.error(`failed to copy package content folder to ${pkgName}`);
+        console.error(`failed to copy package content folder to ${pkgName}`);
         reject(err);
       }
     }
@@ -207,12 +214,15 @@ function copyPackage(config, { compile, build, custom }) {
     try {
       shell.rm("-rf", [tarName, "package"]);
     } catch (e) {
-      out.error("could not remove tgz or package folder", e);
+      console.error("could not remove tgz or package folder", e);
     }
   });
 }
 
-async function installPackage(config, { packageName, compile, build, custom }) {
+export async function installPackage(
+  config: Config,
+  { packageName, compile, build, custom }: Install
+) {
   const { dir } = config;
 
   console.log(`searching package ${packageName} under ${dir}`);
@@ -233,11 +243,11 @@ async function installPackage(config, { packageName, compile, build, custom }) {
   const pack = shell.exec("npm pack", { silent: true });
 
   if (pack.code !== 0) {
-    out.error("pack failed");
+    console.error("pack failed");
     return;
   }
 
-  const lines = pack.output.split("\n");
+  const lines = pack.stdout.split("\n");
   const tarName = lines[lines.length - 2];
 
   shell.popd();
@@ -245,11 +255,11 @@ async function installPackage(config, { packageName, compile, build, custom }) {
   let pjsontxt = fs.readFileSync("./package.json", "utf-8");
   let hasPackageLock = fs.existsSync("./package-lock.json");
   let plocktxt =
-    hasPackageLock && fs.readFileSync("./package-lock.json", "utf-8");
+    hasPackageLock ? fs.readFileSync("./package-lock.json", "utf-8") : undefined;
   shell.exec(`npm install --save ${packageFolder}${path.sep}${tarName}`);
   fs.writeFileSync("./package.json", pjsontxt);
   if (hasPackageLock) {
-    fs.writeFileSync("./package-lock.json", plocktxt);
+    fs.writeFileSync("./package-lock.json", plocktxt!);
   } else {
     fs.removeSync("./package-lock.json");
   }
@@ -257,5 +267,3 @@ async function installPackage(config, { packageName, compile, build, custom }) {
   shell.cd(packageFolder);
   shell.rm(tarName);
 }
-
-module.exports = { copyPackage, installPackage };
