@@ -54,3 +54,5 @@ jobs:
         run: |
           versi ${{ env.versi_args }}
           yarn publish --no-interactive
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
