@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "lint": "eslint .",
+    "lint": "eslint ./src",
     "local": "tsc && npm i -g",
     "test": "echo 'no tests yet :('"
   },
