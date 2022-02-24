@@ -4,7 +4,7 @@ import { getConfig } from "../utils/config";
 import { Install } from "../types";
 
 export const command = "install <packageName> [compile] [build] [custom]";
-export const desc =
+export const describe =
   "Installs (including dependencies) on the current package a local package found under the configured dir";
 
 export const builder: CommandBuilder<Install, Install> = (yargs) =>
@@ -12,23 +12,26 @@ export const builder: CommandBuilder<Install, Install> = (yargs) =>
     .positional("packageName", {
       type: "string",
       demandOption: true,
-      describe:
-        "The name of the package to install (as described in its package.json)",
+      describeribe:
+        "The name of the package to install (as describeribed in its package.json)",
     })
     .positional("compile", {
       type: "string",
+      alias: "c",
       demandOption: false,
-      describe: "Run compile script on the target package before installing",
+      describeribe:
+        "Run compile script on the target package before installing",
     })
     .positional("build", {
       type: "string",
+      alias: "b",
       demandOption: false,
-      describe: "Run build script on the target package before installing",
+      describeribe: "Run build script on the target package before installing",
     })
     .positional("custom", {
       type: "string",
       demandOption: false,
-      describe: "Run custom script on the target package before installing",
+      describeribe: "Run custom script on the target package before installing",
     });
 
 export const handler = (argv: Arguments<Install>) => {
@@ -41,6 +44,5 @@ export const handler = (argv: Arguments<Install>) => {
     console.error(
       "local-package-cli hasnt been initiated yet, please run init"
     );
-    return false;
   }
 };

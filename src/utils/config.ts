@@ -22,7 +22,7 @@ export function initConfig({
   });
 }
 
-export function setConfig(options: Config) {
+export function setConfig(options: Partial<Config>) {
   const homedir = os.homedir();
   const configPath = path.join(homedir, ".local-package-cli-config.json");
 

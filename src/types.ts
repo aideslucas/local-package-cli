@@ -6,9 +6,9 @@ export type Config = {
 };
 
 export type CommonArgs = {
-  compile?: string | boolean;
-  build?: string | boolean;
-  custom?: string | boolean;
+  compile?: string;
+  build?: string;
+  custom?: string;
 };
 
 export type Copy = {

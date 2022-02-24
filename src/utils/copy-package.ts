@@ -1,54 +1,52 @@
 import path from "path";
 import fs from "fs-extra";
 import { promisify } from "util";
-import shell from "shelljs";
+import shell, { ExecOutputReturnValue } from "shelljs";
 import { CommonArgs, Config, Install } from "../types";
 
-const readdir = promisify<fs.PathLike, string[]>(fs.readdir);
-const stat = promisify<fs.PathLike, fs.Stats>(fs.stat);
+const readdir = promisify<string, string[]>(fs.readdir);
+const stat = promisify<string, fs.Stats>(fs.stat);
 
-function executeScripts(
-  { customScript, compileScript, buildScript }: Config,
-  { compile, build, custom }: CommonArgs
+function execShell(script: string) {
+  return shell.exec(script, {
+    silent: true,
+  }) as ExecOutputReturnValue;
+}
+
+function executeScript(
+  config: Config,
+  args: CommonArgs,
+  configKey: keyof Config,
+  argsKey: keyof CommonArgs
 ) {
-  if (custom) {
-    if (typeof custom === "boolean" && !customScript) {
+  if (args[argsKey] || args[argsKey] === "") {
+    let script: string;
+    if (args[argsKey] === "" && !config[configKey]) {
       console.error(
-        "there is no customScript in config. either set customScript or send the script in the command"
+        `there is no ${configKey} in config. either set ${configKey} or send the script in the command`
       );
-      return;
-    } else if (typeof custom === "string") {
-      shell.exec(custom);
+      return false;
     } else {
-      shell.exec(customScript!);
+      script = args[argsKey] === "" ? config[configKey]! : args[argsKey]!;
     }
-  }
 
-  if (compile) {
-    if (typeof compile === "boolean" && !compileScript) {
-      console.error(
-        "there is no compileScript in config. either set compileScript or send the script in the command"
-      );
-      return;
-    } else if (typeof compile === "string") {
-      shell.exec(compile);
-    } else {
-      shell.exec(compileScript!);
+    console.info(`running ${argsKey} script (${script})`);
+    const response = execShell(script);
+    if (response.code !== 0) {
+      console.error(`${argsKey} script failed to run`);
+      return false;
     }
-  }
 
-  if (build) {
-    if (typeof build === "boolean" && !buildScript) {
-      console.error(
-        "there is no buildScript in config. either set buildScript or send the script in the command"
-      );
-      return;
-    } else if (typeof build === "string") {
-      shell.exec(build);
-    } else {
-      shell.exec(buildScript!);
-    }
+    return true;
   }
+}
+
+function executeScripts(config: Config, args: CommonArgs) {
+  const custom = executeScript(config, args, "customScript", "custom");
+  const build = executeScript(config, args, "buildScript", "build");
+  const compile = executeScript(config, args, "compileScript", "compile");
+
+  return { custom, build, compile };
 }
 
 async function searchPackageUsageRecursive(
@@ -157,19 +155,22 @@ export function copyPackage(
   config: Config,
   { compile, build, custom }: CommonArgs
 ) {
-  executeScripts(config, { compile, build, custom });
+  const executions = executeScripts(config, { compile, build, custom });
+  if (Object.values(executions).some((exec) => exec === false)) {
+    return;
+  }
 
   const { dir } = config;
-  const pack = shell.exec("npm pack", { silent: true });
+  const pack = execShell("npm pack");
 
   if (pack.code !== 0) {
     console.error("pack failed");
     return;
   }
 
-  const lines = pack.stdout.split("\n");
+  const lines = pack.output.split("\n");
   const tarName = lines[lines.length - 2];
-  const unpack = shell.exec(`tar -xzf ${tarName}`, { silent: true });
+  const unpack = execShell(`tar -xzf ${tarName}`);
 
   if (unpack.code !== 0) {
     console.error("unpack failed, removing tgz");
@@ -238,25 +239,30 @@ export async function installPackage(
   }
 
   shell.pushd(packageFolder);
-  executeScripts(config, { compile, build, custom });
 
-  const pack = shell.exec("npm pack", { silent: true });
+  const executions = executeScripts(config, { compile, build, custom });
+  if (Object.values(executions).some((exec) => exec === false)) {
+    return;
+  }
+
+  const pack = execShell("npm pack");
 
   if (pack.code !== 0) {
     console.error("pack failed");
     return;
   }
 
-  const lines = pack.stdout.split("\n");
+  const lines = pack.output.split("\n");
   const tarName = lines[lines.length - 2];
 
   shell.popd();
 
   let pjsontxt = fs.readFileSync("./package.json", "utf-8");
   let hasPackageLock = fs.existsSync("./package-lock.json");
-  let plocktxt =
-    hasPackageLock ? fs.readFileSync("./package-lock.json", "utf-8") : undefined;
-  shell.exec(`npm install --save ${packageFolder}${path.sep}${tarName}`);
+  let plocktxt = hasPackageLock
+    ? fs.readFileSync("./package-lock.json", "utf-8")
+    : undefined;
+  execShell(`npm install --save ${packageFolder}${path.sep}${tarName}`);
   fs.writeFileSync("./package.json", pjsontxt);
   if (hasPackageLock) {
     fs.writeFileSync("./package-lock.json", plocktxt!);
