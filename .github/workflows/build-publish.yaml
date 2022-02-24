@@ -27,10 +27,10 @@ jobs:
     steps:
       - name: set envs
         run: |
-          echo tag="--tag latest" | tee -a $GITHUB_ENV 
+          echo tag="latest" | tee -a $GITHUB_ENV 
           if [[ ! ${{ github.ref }} =~ refs/heads/(master|main) ]]; then
             echo versi_args="-t ${GITHUB_REF##*/}" | tee -a $GITHUB_ENV
-            echo tag="--tag ${GITHUB_REF##*/}" | tee -a $GITHUB_ENV
+            echo tag="${GITHUB_REF##*/}" | tee -a $GITHUB_ENV
           fi
 
       - name: Checkout the repo
@@ -55,7 +55,8 @@ jobs:
       - name: versi increment and publish
         run: |
           versi ${{ env.versi_args }}
-          npm ci
-          npm publish ${{ env.tag }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          tag: ${{ env.tag }}
