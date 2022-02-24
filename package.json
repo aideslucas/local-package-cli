@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint .",
-    "local": "npm run build && npm i -g && pkg-cli"
+    "local": "tsc && npm i -g",
+    "test": "echo 'no tests yet :('"
   },
   "keywords": [],
   "author": "",
