@@ -55,6 +55,7 @@ jobs:
       - name: versi increment and publish
         run: |
           versi ${{ env.versi_args }}
+          npm ci
           npm publish ${{ env.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
