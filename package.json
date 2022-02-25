@@ -7,12 +7,8 @@
   "files": [
     "lib/**/*"
   ],
-  "pre-push": [
-    "lint"
-  ],
   "scripts": {
     "build": "tsc",
-    "lint": "eslint ./src",
     "local": "tsc && npm i -g",
     "test": "echo 'no tests yet :('"
   },
@@ -34,10 +30,6 @@
     "@types/nodemon": "^1.19.1",
     "@types/shelljs": "^0.3.0",
     "@types/yargs": "^16.0.0",
-    "eslint": "^6.8.0",
-    "pre-push": "^0.1.1",
-    "trash": "^6.1.1",
-    "trash-cli": "^3.0.0",
     "typescript": "^4.5.5"
   },
   "bin": {
