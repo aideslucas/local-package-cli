@@ -1,11 +1,7 @@
-import path from "path";
 import fs from "fs-extra";
-import { promisify } from "util";
+import path from "path";
 import shell, { ExecOutputReturnValue } from "shelljs";
 import { CommonArgs, Config, Install } from "../types";
-
-const readdir = promisify<string, string[]>(fs.readdir);
-const stat = promisify<string, fs.Stats>(fs.stat);
 
 function execShell(script: string) {
   return shell.exec(script, {
@@ -37,6 +33,7 @@ function executeScript(
       return false;
     }
 
+    console.info(`${argsKey} script ran successfully`);
     return true;
   }
 }
@@ -54,10 +51,7 @@ async function searchPackageUsageRecursive(
   directory: string,
   copyPackageContent: Function
 ) {
-  const nodeVersion = process.version;
-  const folders = await (nodeVersion.startsWith("v8")
-    ? getSubFoldersV8
-    : getSubFolders)(directory);
+  const folders = await getSubFolders(directory);
   await Promise.all(
     folders.map(async (folder: string) => {
       const pJsonPath = path.join(folder, "package.json");
@@ -91,24 +85,6 @@ async function searchPackageUsageRecursive(
   );
 }
 
-async function getSubFoldersV8(dir: string) {
-  const subdirs = await readdir(dir);
-  const files = await Promise.all(
-    subdirs.map(async (subdir) => {
-      const res = path.resolve(dir, subdir);
-      if (
-        (await stat(res)).isDirectory() &&
-        !subdir.startsWith(".") &&
-        subdir !== "node_modules"
-      ) {
-        return res;
-      }
-      return null;
-    })
-  );
-  return files.reduce<string[]>((a, f) => a.concat(f ?? ""), []);
-}
-
 async function getSubFolders(directory: string) {
   const dirs = await fs.readdir(directory, { withFileTypes: true });
   return dirs
@@ -125,10 +101,7 @@ async function searchPackageDefinitionRecursive(
   pname: string,
   directory: string
 ) {
-  const nodeVersion = process.version;
-  const folders = await (nodeVersion.startsWith("v8")
-    ? getSubFoldersV8
-    : getSubFolders)(directory);
+  const folders = await getSubFolders(directory);
   const res: any[] = await Promise.all(
     folders.map(async (folder) => {
       const pJsonPath = path.join(folder, "package.json");
@@ -189,11 +162,10 @@ export function copyPackage(
   return new Promise((resolve, reject) => {
     async function copyPackageContent(destPath: string, pkgName: string) {
       try {
-        console.debug(`copying package to package ${pkgName}`);
         try {
           fs.removeSync(destPath);
         } catch (err) {
-          console.log(
+          console.error(
             `failed to delete old package content in ${pkgName}`,
             err
           );
