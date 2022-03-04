@@ -1,7 +1,7 @@
 import { Arguments, CommandBuilder } from "yargs";
 import { installPackage } from "..";
-import { getConfig } from "../utils/config";
 import { Install } from "../types";
+import { getConfig } from "../utils/config";
 
 export const command = "install <packageName> [compile] [build] [custom]";
 export const describe =
@@ -42,7 +42,7 @@ export const handler = (argv: Arguments<Install>) => {
     installPackage(config, { packageName, compile, build, custom });
   } else {
     console.error(
-      "local-package-cli hasnt been initiated yet, please run init"
+      "local-package-cli hasn't been initiated yet, please run init"
     );
   }
 };

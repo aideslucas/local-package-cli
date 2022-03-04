@@ -1,13 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
-import shell, { ExecOutputReturnValue } from "shelljs";
-import { CommonArgs, Config, Install } from "../types";
-
-function execShell(script: string) {
-  return shell.exec(script, {
-    silent: true,
-  }) as ExecOutputReturnValue;
-}
+import { CommonArgs, CompleteConfig, Config, Install } from "../types";
+import { execShell, popd, pushd, remove } from "./shell";
 
 function executeScript(
   config: Config,
@@ -147,7 +141,7 @@ export function copyPackage(
 
   if (unpack.code !== 0) {
     console.error("unpack failed, removing tgz");
-    shell.rm(tarName);
+    remove(tarName);
     return;
   }
 
@@ -185,7 +179,7 @@ export function copyPackage(
       .catch((err) => reject(err));
   }).finally(() => {
     try {
-      shell.rm("-rf", [tarName, "package"]);
+      remove([tarName, "package"]);
     } catch (e) {
       console.error("could not remove tgz or package folder", e);
     }
@@ -193,10 +187,10 @@ export function copyPackage(
 }
 
 export async function installPackage(
-  config: Config,
+  config: CompleteConfig,
   { packageName, compile, build, custom }: Install
 ) {
-  const { dir } = config;
+  const { dir, preferredPackageManager } = config;
 
   console.log(`searching package ${packageName} under ${dir}`);
 
@@ -210,7 +204,7 @@ export async function installPackage(
     return;
   }
 
-  shell.pushd(packageFolder);
+  pushd(packageFolder);
 
   const executions = executeScripts(config, { compile, build, custom });
   if (Object.values(executions).some((exec) => exec === false)) {
@@ -227,21 +221,29 @@ export async function installPackage(
   const lines = pack.output.split("\n");
   const tarName = lines[lines.length - 2];
 
-  shell.popd();
+  popd();
 
-  let pjsontxt = fs.readFileSync("./package.json", "utf-8");
-  let hasPackageLock = fs.existsSync("./package-lock.json");
-  let plocktxt = hasPackageLock
-    ? fs.readFileSync("./package-lock.json", "utf-8")
-    : undefined;
-  execShell(`npm install --save ${packageFolder}${path.sep}${tarName}`);
-  fs.writeFileSync("./package.json", pjsontxt);
-  if (hasPackageLock) {
-    fs.writeFileSync("./package-lock.json", plocktxt!);
+  let packageJsonTxt = fs.readFileSync("./package.json", "utf-8");
+  let lockFile, installScript;
+  if (preferredPackageManager === "yarn") {
+    lockFile = "./yarn.lock";
+    installScript = "yarn add --no-lockfile";
   } else {
-    fs.removeSync("./package-lock.json");
+    lockFile = "./package-lock.json";
+    installScript = "npm install --no-save";
   }
 
-  shell.cd(packageFolder);
-  shell.rm(tarName);
+  let hasLockFile = fs.existsSync(lockFile);
+  let lockTxt = hasLockFile ? fs.readFileSync(lockFile, "utf-8") : undefined;
+  execShell(`${installScript} ${path.join(packageFolder, tarName)}`);
+  fs.writeFileSync("./package.json", packageJsonTxt);
+  if (hasLockFile) {
+    fs.writeFileSync(lockFile, lockTxt!);
+  } else {
+    fs.removeSync(lockFile);
+  }
+
+  pushd(packageFolder);
+  remove(tarName);
+  popd();
 }

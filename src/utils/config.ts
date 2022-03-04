@@ -1,25 +1,29 @@
 import fs from "fs-extra";
-import path from "path";
 import os from "os";
-import { Config } from "../types";
+import path from "path";
+import { CompleteConfig, Config } from "../types";
+import { execShell } from "./shell";
 
 export function initConfig({
   dir,
-  compileScript = "npm run compile",
-  buildScript = "npm run build",
+  compileScript,
+  buildScript,
   customScript,
 }: Config) {
   const homedir = os.homedir();
   const configPath = path.join(homedir, ".local-package-cli-config.json");
+  const preferredPackageManager =
+    execShell("yarn --version").code === 0 ? "yarn" : "npm";
 
   fs.ensureFileSync(configPath);
   fs.writeJsonSync(configPath, {
     dir,
-    compileScript,
-    buildScript,
+    compileScript: compileScript || `${preferredPackageManager} run compile`,
+    buildScript: buildScript || `${preferredPackageManager} run build`,
     customScript,
     inited: true,
-  });
+    preferredPackageManager,
+  } as CompleteConfig);
 }
 
 export function setConfig(options: Partial<Config>) {
@@ -39,7 +43,8 @@ export function setConfig(options: Partial<Config>) {
     buildScript: options.buildScript || config.buildScript,
     customScript: options.customScript || config.customScript,
     inited: true,
-  });
+    preferredPackageManager: config.preferredPackageManager,
+  } as CompleteConfig);
 }
 
 export function getConfig() {
@@ -50,7 +55,7 @@ export function getConfig() {
 
   try {
     const config = fs.readJsonSync(configPath);
-    return config;
+    return config as CompleteConfig;
   } catch (e) {
     return null;
   }
@@ -64,7 +69,6 @@ export function printConfig() {
     return;
   }
 
-  delete config.inited;
   console.info(config);
   return;
 }
