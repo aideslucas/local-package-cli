@@ -1,27 +1,25 @@
 {
   "name": "local-package-cli",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "The perfect package to work with packages locally",
   "main": "lib/index.js",
   "repository": "git://github.com/aideslucas/local-package-cli.git",
   "files": [
     "lib/**/*"
   ],
-  "pre-push": [
-    "lint"
-  ],
+  "engines": {
+    "node": ">=10.10.0"
+  },
   "scripts": {
-    "test": "echo 'no test yet'",
-    "lint": "eslint ."
+    "build": "tsc",
+    "local": "tsc && npm i -g",
+    "test": "echo 'no tests yet :('"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cli-output": "^1.0.0",
     "fs-extra": "^8.1.0",
-    "global": "^4.4.0",
-    "local-package-cli": "^2.0.3",
     "nodemon": "^2.0.7",
     "os": "^0.1.1",
     "path": "^0.12.7",
@@ -30,10 +28,12 @@
     "yargs": "^16.2.0"
   },
   "devDependencies": {
-    "eslint": "^6.8.0",
-    "pre-push": "^0.1.1",
-    "trash": "^6.1.1",
-    "trash-cli": "^3.0.0"
+    "@types/fs-extra": "^9.0.0",
+    "@types/node": "^17.0.21",
+    "@types/nodemon": "^1.19.1",
+    "@types/shelljs": "^0.3.0",
+    "@types/yargs": "^16.0.0",
+    "typescript": "^4.5.5"
   },
   "bin": {
     "pkg-cli": "lib/cli.js"

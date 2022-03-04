@@ -1,0 +1,62 @@
+name: build-and-publish
+on:
+  workflow_dispatch:
+  push:
+    branches: ["*"]
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v2
+
+      - name: install
+        run: npm i
+
+      - name: build
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test
+
+  publish:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref  == 'refs/heads/main' || contains(github.event.head_commit.message, '#build') }}
+    runs-on: ubuntu-latest
+    needs: testing
+    steps:
+      - name: set envs
+        run: |
+          echo tag="latest" | tee -a $GITHUB_ENV 
+          if [[ ! ${{ github.ref }} =~ refs/heads/(master|main) ]]; then
+            echo versi_args="-t ${GITHUB_REF##*/}" | tee -a $GITHUB_ENV
+            echo tag="${GITHUB_REF##*/}" | tee -a $GITHUB_ENV
+          fi
+
+      - name: Checkout the repo
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: nodejs-setup
+        uses: actions/setup-node@v2
+        with:
+          node-version: "14.x"
+
+      - name: install versi
+        run: |
+          npm i versi -g
+
+      - name: build
+        run: |
+          npm i
+          npm run build
+
+      - name: versi increment and publish
+        run: |
+          versi ${{ env.versi_args }}
+
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          tag: ${{ env.tag }}

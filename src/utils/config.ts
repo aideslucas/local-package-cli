@@ -1,16 +1,14 @@
-/* eslint-disable no-sync */
-"use strict";
-const fs = require("fs-extra");
-const path = require("path");
-const os = require("os");
-const out = require("cli-output");
+import fs from "fs-extra";
+import path from "path";
+import os from "os";
+import { Config } from "../types";
 
-function initConfig({
+export function initConfig({
   dir,
   compileScript = "npm run compile",
   buildScript = "npm run build",
   customScript,
-}) {
+}: Config) {
   const homedir = os.homedir();
   const configPath = path.join(homedir, ".local-package-cli-config.json");
 
@@ -24,14 +22,14 @@ function initConfig({
   });
 }
 
-function setConfig(options) {
+export function setConfig(options: Partial<Config>) {
   const homedir = os.homedir();
   const configPath = path.join(homedir, ".local-package-cli-config.json");
 
   const config = getConfig();
 
   if (!config) {
-    out.error("No config, run init first");
+    console.error("No config, run init first");
     return;
   }
 
@@ -44,7 +42,7 @@ function setConfig(options) {
   });
 }
 
-function getConfig() {
+export function getConfig() {
   const homedir = os.homedir();
   const configPath = path.join(homedir, ".local-package-cli-config.json");
 
@@ -58,17 +56,15 @@ function getConfig() {
   }
 }
 
-function printConfig() {
+export function printConfig() {
   const config = getConfig();
 
   if (!config) {
-    out.error("No config, run init first");
+    console.error("No config, run init first");
     return;
   }
 
   delete config.inited;
-  out.prettyJSON(config);
+  console.info(config);
   return;
 }
-
-module.exports = { initConfig, setConfig, getConfig, printConfig };
