@@ -70,6 +70,6 @@ export function printConfig() {
     return;
   }
 
-  logger.info(config);
+  console.info(config);
   return;
 }
