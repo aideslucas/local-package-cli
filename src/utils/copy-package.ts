@@ -1,13 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
-import shell, { ExecOutputReturnValue } from "shelljs";
-import { CommonArgs, Config, Install } from "../types";
-
-function execShell(script: string) {
-  return shell.exec(script, {
-    silent: true,
-  }) as ExecOutputReturnValue;
-}
+import { CommonArgs, CompleteConfig, Config, Install } from "../types";
+import { logger } from "./log";
+import { execShell, popd, pushd, remove } from "./shell";
 
 function executeScript(
   config: Config,
@@ -18,7 +13,7 @@ function executeScript(
   if (args[argsKey] || args[argsKey] === "") {
     let script: string;
     if (args[argsKey] === "" && !config[configKey]) {
-      console.error(
+      logger.error(
         `there is no ${configKey} in config. either set ${configKey} or send the script in the command`
       );
       return false;
@@ -26,14 +21,14 @@ function executeScript(
       script = args[argsKey] === "" ? config[configKey]! : args[argsKey]!;
     }
 
-    console.info(`running ${argsKey} script (${script})`);
+    logger.debug(`running ${argsKey} script (${script})`);
     const response = execShell(script);
     if (response.code !== 0) {
-      console.error(`${argsKey} script failed to run`);
+      logger.error(`${argsKey} script failed to run`);
       return false;
     }
 
-    console.info(`${argsKey} script ran successfully`);
+    logger.success(`${argsKey} script ran successfully`);
     return true;
   }
 }
@@ -111,7 +106,7 @@ async function searchPackageDefinitionRecursive(
         if (folderPackageJson && folderPackageJson.name === pname) {
           return folder;
         } else if (!folderPackageJson) {
-          console.error(
+          logger.warn(
             `package.json for folder ${folder} is invalid, skipping it`
           );
         }
@@ -137,7 +132,7 @@ export function copyPackage(
   const pack = execShell("npm pack");
 
   if (pack.code !== 0) {
-    console.error("pack failed");
+    logger.error("pack failed");
     return;
   }
 
@@ -146,8 +141,8 @@ export function copyPackage(
   const unpack = execShell(`tar -xzf ${tarName}`);
 
   if (unpack.code !== 0) {
-    console.error("unpack failed, removing tgz");
-    shell.rm(tarName);
+    logger.error("unpack failed, removing tgz");
+    remove(tarName);
     return;
   }
 
@@ -157,7 +152,7 @@ export function copyPackage(
   const pjson = require(packageJsonPath);
   const pname = pjson.name;
 
-  console.log(`copying package ${pname} to repos under: ${dir}`);
+  logger.debug(`copying package ${pname} to repos under: ${dir}`);
 
   return new Promise((resolve, reject) => {
     async function copyPackageContent(destPath: string, pkgName: string) {
@@ -165,15 +160,15 @@ export function copyPackage(
         try {
           fs.removeSync(destPath);
         } catch (err) {
-          console.error(
+          logger.error(
             `failed to delete old package content in ${pkgName}`,
             err
           );
         }
         fs.copySync(packagePath, destPath);
-        console.log(`package content folder was copied to ${pkgName}`);
+        logger.success(`package content folder was copied to ${pkgName}`);
       } catch (err) {
-        console.error(`failed to copy package content folder to ${pkgName}`);
+        logger.warn(`failed to copy package content folder to ${pkgName}`);
         reject(err);
       }
     }
@@ -185,20 +180,20 @@ export function copyPackage(
       .catch((err) => reject(err));
   }).finally(() => {
     try {
-      shell.rm("-rf", [tarName, "package"]);
+      remove([tarName, "package"]);
     } catch (e) {
-      console.error("could not remove tgz or package folder", e);
+      logger.warn("could not remove tgz or package folder", e);
     }
   });
 }
 
 export async function installPackage(
-  config: Config,
+  config: CompleteConfig,
   { packageName, compile, build, custom }: Install
 ) {
-  const { dir } = config;
+  const { dir, preferredPackageManager } = config;
 
-  console.log(`searching package ${packageName} under ${dir}`);
+  logger.debug(`searching package ${packageName} under ${dir}`);
 
   const packageFolder = await searchPackageDefinitionRecursive(
     packageName,
@@ -206,11 +201,11 @@ export async function installPackage(
   );
 
   if (!packageFolder) {
-    console.error(`package not found under ${dir}. cannot install`);
+    logger.error(`package not found under ${dir}. cannot install`);
     return;
   }
 
-  shell.pushd(packageFolder);
+  pushd(packageFolder);
 
   const executions = executeScripts(config, { compile, build, custom });
   if (Object.values(executions).some((exec) => exec === false)) {
@@ -220,28 +215,36 @@ export async function installPackage(
   const pack = execShell("npm pack");
 
   if (pack.code !== 0) {
-    console.error("pack failed");
+    logger.error("pack failed");
     return;
   }
 
   const lines = pack.output.split("\n");
   const tarName = lines[lines.length - 2];
 
-  shell.popd();
+  popd();
 
-  let pjsontxt = fs.readFileSync("./package.json", "utf-8");
-  let hasPackageLock = fs.existsSync("./package-lock.json");
-  let plocktxt = hasPackageLock
-    ? fs.readFileSync("./package-lock.json", "utf-8")
-    : undefined;
-  execShell(`npm install --save ${packageFolder}${path.sep}${tarName}`);
-  fs.writeFileSync("./package.json", pjsontxt);
-  if (hasPackageLock) {
-    fs.writeFileSync("./package-lock.json", plocktxt!);
+  let packageJsonTxt = fs.readFileSync("./package.json", "utf-8");
+  let lockFile, installScript;
+  if (preferredPackageManager === "yarn") {
+    lockFile = "./yarn.lock";
+    installScript = "yarn add --no-lockfile";
   } else {
-    fs.removeSync("./package-lock.json");
+    lockFile = "./package-lock.json";
+    installScript = "npm install --no-save";
   }
 
-  shell.cd(packageFolder);
-  shell.rm(tarName);
+  let hasLockFile = fs.existsSync(lockFile);
+  let lockTxt = hasLockFile ? fs.readFileSync(lockFile, "utf-8") : undefined;
+  execShell(`${installScript} ${path.join(packageFolder, tarName)}`);
+  fs.writeFileSync("./package.json", packageJsonTxt);
+  if (hasLockFile) {
+    fs.writeFileSync(lockFile, lockTxt!);
+  } else {
+    fs.removeSync(lockFile);
+  }
+
+  pushd(packageFolder);
+  remove(tarName);
+  popd();
 }

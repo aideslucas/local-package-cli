@@ -1,8 +1,9 @@
 import nodemon from "nodemon";
 import { Arguments, CommandBuilder } from "yargs";
 import { copyPackage } from "..";
-import { getConfig } from "../utils/config";
 import { Copy } from "../types";
+import { getConfig } from "../utils/config";
+import { logger } from "./../utils/log";
 
 export const command = "copy [compile] [build] [custom] [watch]";
 export const describe =
@@ -37,7 +38,7 @@ export const builder: CommandBuilder<Copy, Copy> = (yargs) =>
 export const handler = (argv: Arguments<Copy>) => {
   const { watch, custom, compile, build } = argv;
   const config = getConfig();
-  if (config && config.inited) {
+  if (config && config.initialized) {
     copyPackage(config, { compile, build, custom });
     if (watch) {
       const watchParam = typeof watch === "string" ? watch : ".";
@@ -49,8 +50,8 @@ export const handler = (argv: Arguments<Copy>) => {
       });
     }
   } else {
-    console.error(
-      "pkg-cli hasnt been initiated yet, please run 'pkg-cli init'"
+    logger.error(
+      "pkg-cli hasn't been initialized yet, please run 'pkg-cli init'"
     );
   }
 };

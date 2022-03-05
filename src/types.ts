@@ -5,6 +5,11 @@ export type Config = {
   customScript?: string;
 };
 
+export type CompleteConfig = Config & {
+  preferredPackageManager: "yarn" | "npm";
+  initialized: boolean;
+};
+
 export type CommonArgs = {
   compile?: string;
   build?: string;

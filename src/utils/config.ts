@@ -1,25 +1,30 @@
 import fs from "fs-extra";
-import path from "path";
 import os from "os";
-import { Config } from "../types";
+import path from "path";
+import { CompleteConfig, Config } from "../types";
+import { logger } from "./log";
+import { execShell } from "./shell";
 
 export function initConfig({
   dir,
-  compileScript = "npm run compile",
-  buildScript = "npm run build",
+  compileScript,
+  buildScript,
   customScript,
 }: Config) {
   const homedir = os.homedir();
   const configPath = path.join(homedir, ".local-package-cli-config.json");
+  const preferredPackageManager =
+    execShell("yarn --version").code === 0 ? "yarn" : "npm";
 
   fs.ensureFileSync(configPath);
   fs.writeJsonSync(configPath, {
     dir,
-    compileScript,
-    buildScript,
+    compileScript: compileScript || `${preferredPackageManager} run compile`,
+    buildScript: buildScript || `${preferredPackageManager} run build`,
     customScript,
-    inited: true,
-  });
+    initialized: true,
+    preferredPackageManager,
+  } as CompleteConfig);
 }
 
 export function setConfig(options: Partial<Config>) {
@@ -29,7 +34,7 @@ export function setConfig(options: Partial<Config>) {
   const config = getConfig();
 
   if (!config) {
-    console.error("No config, run init first");
+    logger.error("No config, run init first");
     return;
   }
 
@@ -38,8 +43,9 @@ export function setConfig(options: Partial<Config>) {
     compileScript: options.compileScript || config.compileScript,
     buildScript: options.buildScript || config.buildScript,
     customScript: options.customScript || config.customScript,
-    inited: true,
-  });
+    initialized: true,
+    preferredPackageManager: config.preferredPackageManager,
+  } as CompleteConfig);
 }
 
 export function getConfig() {
@@ -50,7 +56,7 @@ export function getConfig() {
 
   try {
     const config = fs.readJsonSync(configPath);
-    return config;
+    return config as CompleteConfig;
   } catch (e) {
     return null;
   }
@@ -60,11 +66,10 @@ export function printConfig() {
   const config = getConfig();
 
   if (!config) {
-    console.error("No config, run init first");
+    logger.error("No config, run init first");
     return;
   }
 
-  delete config.inited;
-  console.info(config);
+  logger.info(config);
   return;
 }
