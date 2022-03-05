@@ -7,7 +7,7 @@ export type Config = {
 
 export type CompleteConfig = Config & {
   preferredPackageManager: "yarn" | "npm";
-  inited: boolean;
+  initialized: boolean;
 };
 
 export type CommonArgs = {

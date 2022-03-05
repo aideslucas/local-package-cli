@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import os from "os";
 import path from "path";
 import { CompleteConfig, Config } from "../types";
+import { logger } from "./log";
 import { execShell } from "./shell";
 
 export function initConfig({
@@ -21,7 +22,7 @@ export function initConfig({
     compileScript: compileScript || `${preferredPackageManager} run compile`,
     buildScript: buildScript || `${preferredPackageManager} run build`,
     customScript,
-    inited: true,
+    initialized: true,
     preferredPackageManager,
   } as CompleteConfig);
 }
@@ -33,7 +34,7 @@ export function setConfig(options: Partial<Config>) {
   const config = getConfig();
 
   if (!config) {
-    console.error("No config, run init first");
+    logger.error("No config, run init first");
     return;
   }
 
@@ -42,7 +43,7 @@ export function setConfig(options: Partial<Config>) {
     compileScript: options.compileScript || config.compileScript,
     buildScript: options.buildScript || config.buildScript,
     customScript: options.customScript || config.customScript,
-    inited: true,
+    initialized: true,
     preferredPackageManager: config.preferredPackageManager,
   } as CompleteConfig);
 }
@@ -65,10 +66,10 @@ export function printConfig() {
   const config = getConfig();
 
   if (!config) {
-    console.error("No config, run init first");
+    logger.error("No config, run init first");
     return;
   }
 
-  console.info(config);
+  logger.info(config);
   return;
 }

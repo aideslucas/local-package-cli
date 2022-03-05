@@ -2,6 +2,7 @@ import { Arguments, CommandBuilder } from "yargs";
 import { installPackage } from "..";
 import { Install } from "../types";
 import { getConfig } from "../utils/config";
+import { logger } from "../utils/log";
 
 export const command = "install <packageName> [compile] [build] [custom]";
 export const describe =
@@ -37,11 +38,11 @@ export const builder: CommandBuilder<Install, Install> = (yargs) =>
 export const handler = (argv: Arguments<Install>) => {
   const { packageName, custom, compile, build } = argv;
   const config = getConfig();
-  if (config && config.inited) {
-    console.info(`installing package ${packageName}`);
+  if (config && config.initialized) {
+    logger.info(`installing package ${packageName}`);
     installPackage(config, { packageName, compile, build, custom });
   } else {
-    console.error(
+    logger.error(
       "local-package-cli hasn't been initiated yet, please run init"
     );
   }
