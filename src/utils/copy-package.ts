@@ -173,11 +173,16 @@ export function copyPackage(
       }
     }
 
-    return fs
-      .ensureDir(packagePath)
-      .then(() => searchPackageUsageRecursive(pname, dir, copyPackageContent))
-      .then(resolve)
-      .catch((err) => reject(err));
+    return (
+      /* TODO: JSFIX could not patch the breaking change:
+      Creating a directory with fs-extra no longer returns the path 
+      Suggested fix: The returned promise no longer includes the path of the new directory */
+      fs
+        .ensureDir(packagePath)
+        .then(() => searchPackageUsageRecursive(pname, dir, copyPackageContent))
+        .then(resolve)
+        .catch((err) => reject(err))
+    );
   }).finally(() => {
     try {
       remove([tarName, "package"]);
